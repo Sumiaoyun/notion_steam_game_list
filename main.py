@@ -36,17 +36,16 @@ RETRY_DELAY = 2
 
 logger = logging.getLogger(__name__)
 
-def send_request_with_retry(url, headers=None, json_data=None, retries=MAX_RETRIES, method="patch"):
+def send_request_with_retry(url, headers=None, json_data=None, params=None, retries=MAX_RETRIES, method="patch"):
     response = None
     while retries > 0:
         try:
             if method == "patch":
-                response = requests.patch(url, headers=headers, json=json_data)
+                response = requests.patch(url, headers=headers, json=json_data, params=params)
             elif method == "post":
-                response = requests.post(url, headers=headers, json=json_data)
+                response = requests.post(url, headers=headers, json=json_data, params=params)
             elif method == "get":
-                response = requests.get(url)
-
+                response = requests.get(url, headers=headers, params=params)
             response.raise_for_status()
             return response
         except requests.exceptions.RequestException as e:
@@ -97,10 +96,9 @@ def get_owned_game_data_from_steam():
     
     if include_played_free_games == "true":
         params["include_played_free_games"] = True
-
     logger.info("从Steam获取数据中..")
-
     try:
+        # 使用 params 参数传递查询参数
         response = send_request_with_retry(url, params=params, method="get")
         if response:
             logger.info("数据获取成功!")
@@ -111,7 +109,6 @@ def get_owned_game_data_from_steam():
     except Exception as e:
         logger.error(f"获取Steam数据失败: {e}")
         return {}
-
 def query_achievements_info_from_steam(game):
     url = "http://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/"
     params = {
@@ -121,8 +118,8 @@ def query_achievements_info_from_steam(game):
     }
     
     logger.info(f"查询游戏成就数据: {game['name']}")
-
     try:
+        # 直接使用 requests.get，避免修改已有逻辑
         response = requests.get(url, params=params)
         response.raise_for_status()
         return response.json()
@@ -337,7 +334,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--debug', action='store_true', help='启用调试日志输出')
     args = parser.parse_args()
-
     # 配置日志
     logger = logging.getLogger("")
     logger.setLevel(logging.DEBUG if args.debug else logging.INFO)
