@@ -128,6 +128,7 @@ def get_owned_game_data_from_steam():
         return {}
 
 def query_achievements_info_from_steam(game):
+    """查询游戏成就数据，处理各种错误情况"""
     url = "http://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/"
     params = {
         "key": STEAM_API_KEY,
@@ -141,38 +142,59 @@ def query_achievements_info_from_steam(game):
         response = requests.get(url, params=params)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.HTTPError as e:
+        # 添加对403和400错误的特殊处理
+        if response.status_code == 403:
+            error_data = response.json()
+            if error_data.get('playerstats', {}).get('error') == 'Profile is not public':
+                logger.warning(f"用户个人资料未公开，无法获取成就: {game['name']}")
+                return None
+        elif response.status_code == 400:
+            error_data = response.json()
+            if error_data.get('playerstats', {}).get('error') == 'Requested app has no stats':
+                logger.warning(f"游戏没有成就数据: {game['name']}")
+                # 返回一个空成就列表
+                return {"playerstats": {"achievements": []}}
+        # 其他HTTP错误
         error_text = response.text if hasattr(response, 'text') else str(e)
         logger.error(f"查询成就失败: {game['name']}: {str(e)} .错误: {error_text}")
-    except ValueError as e:
-        logger.error(f"解析JSON响应失败: {game['name']}: {str(e)}")
+    except Exception as e:
+        logger.error(f"查询成就失败: {game['name']}: {str(e)}")
     return None
 
 def get_achievements_count(game):
+    """获取游戏成就统计信息，并输出无成就信息"""
     game_achievements = query_achievements_info_from_steam(game)
     achievements_info = {}
     achievements_info["total"] = 0
     achievements_info["achieved"] = 0
 
+    # 处理无成就信息的情况
     if game_achievements is None or game_achievements.get("playerstats", {}).get("success", False) is False:
         achievements_info["total"] = -1
         achievements_info["achieved"] = -1
         logger.info(f"游戏无成就信息: {game['name']}")
+        print(f"{game['name']}: 无成就信息（个人资料未公开）")
+        return achievements_info
 
-    elif "achievements" not in game_achievements["playerstats"]:
-        achievements_info["total"] = -1
-        achievements_info["achieved"] = -1
+    # 处理游戏本身无成就的情况
+    achievements_data = game_achievements.get("playerstats", {})
+    achievements_list = achievements_data.get("achievements", [])
+    
+    if not achievements_list:  # 检查成就列表是否为空
+        achievements_info["total"] = 0
+        achievements_info["achieved"] = 0
         logger.info(f"游戏无成就: {game['name']}")
+        print(f"{game['name']}: 无成就")
+        return achievements_info
 
-    else:
-        achievements_array = game_achievements["playerstats"]["achievements"]
-        for achievement_dict in achievements_array:
-            achievements_info["total"] = achievements_info["total"] + 1
-            if achievement_dict["achieved"]:
-                achievements_info["achieved"] = achievements_info["achieved"] + 1
+    # 正常处理有成就的游戏
+    for achievement_dict in achievements_list:
+        achievements_info["total"] += 1
+        if achievement_dict.get("achieved", 0) == 1:
+            achievements_info["achieved"] += 1
 
-        logger.info(f"{game['name']} 成就统计完成!")
-
+    logger.info(f"{game['name']} 成就统计完成: {achievements_info['achieved']}/{achievements_info['total']}")
     return achievements_info
 
 def is_record(game, achievements_info):
