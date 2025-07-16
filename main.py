@@ -386,19 +386,19 @@ def update_item_to_notion_database(page_id, game, achievements_info, review_text
         }
     else:  # 默认使用多选类型
         # 确保标签格式正确 - 每个标签应该是 {"name": "标签名称"} 格式
-    tags = []
-        for tag in steam_store_data.get('tag', []):
-            if isinstance(tag, dict):
+            tags = []
+            for tag in steam_store_data.get('tag', []):
+                if isinstance(tag, dict):
         # 如果标签已经是字典格式，确保它有 'name' 字段
-                if 'name' in tag:
-                    tags.append({"name": tag['name']})
-                else:
+                    if 'name' in tag:
+                        tags.append({"name": tag['name']})
+                    else:
         # 处理没有 'name' 字段的情况
-                    logger.warning(f"无效标签格式: {tag}")
-            else:
+                        logger.warning(f"无效标签格式: {tag}")
+                else:
         # 如果标签是字符串，直接使用
-                tags.append({"name": str(tag)})
-            properties[PROPERTY_MAPPING["TAGS"]] = {
+                    tags.append({"name": str(tag)})
+        properties[PROPERTY_MAPPING["TAGS"]] = {
             "type": "multi_select",
             "multi_select": tags
         }
