@@ -30,18 +30,18 @@ PROPERTY_MAPPING = {
     "TAGS": "游戏标签"
 }
 
-# 属性类型映射 - 根据错误信息添加
+# 属性类型映射 - 根据错误信息更新
 PROPERTY_TYPES = {
     "游戏名称": "title",
     "游玩时长 (h)": "number",
     "上次游玩时间": "date",
     "商店链接": "url",
-    "完成度": "multi_select",  # 根据错误信息修正
+    "完成度": "multi_select",
     "总成就数": "number",
     "已完成成就数": "number",
     "评测": "rich_text",
     "游戏简介": "rich_text",
-    "游戏标签": "checkbox"  # 根据错误信息修正
+    "游戏标签": "multi_select"  # 根据错误信息修正为多选类型
 }
 
 # MISC
@@ -236,7 +236,7 @@ def add_item_to_notion_database(game, achievements_info, review_text, steam_stor
     }
     
     # 调整完成度属性为多选类型
-    if PROPERTY_TYPES[PROPERTY_MAPPING["COMPLETION"]] == "multi_select":
+    if PROPERTY_TYPES.get(PROPERTY_MAPPING["COMPLETION"], "") == "multi_select":
         completion_value = []
         if completion >= 0:
             completion_value = [{"name": f"{completion}%"}]
@@ -247,17 +247,19 @@ def add_item_to_notion_database(game, achievements_info, review_text, steam_stor
     else:  # 默认使用数字类型
         properties[PROPERTY_MAPPING["COMPLETION"]] = {"type": "number", "number": completion}
     
-    # 调整游戏标签属性为复选框类型
-    if PROPERTY_TYPES[PROPERTY_MAPPING["TAGS"]] == "checkbox":
+    # 调整游戏标签属性为多选类型
+    if PROPERTY_TYPES.get(PROPERTY_MAPPING["TAGS"], "") == "checkbox":
         has_tags = len(steam_store_data.get('tag', [])) > 0
         properties[PROPERTY_MAPPING["TAGS"]] = {
             "type": "checkbox",
             "checkbox": has_tags
         }
     else:  # 默认使用多选类型
+        # 确保标签格式正确 - 每个标签应该是 {"name": "标签名称"} 格式
+        tags = [{"name": tag} for tag in steam_store_data.get('tag', [])]
         properties[PROPERTY_MAPPING["TAGS"]] = {
             "type": "multi_select",
-            "multi_select": steam_store_data.get('tag', [])
+            "multi_select": tags
         }
 
     data = {
@@ -353,7 +355,7 @@ def update_item_to_notion_database(page_id, game, achievements_info, review_text
     }
     
     # 调整完成度属性为多选类型
-    if PROPERTY_TYPES[PROPERTY_MAPPING["COMPLETION"]] == "multi_select":
+    if PROPERTY_TYPES.get(PROPERTY_MAPPING["COMPLETION"], "") == "multi_select":
         completion_value = []
         if completion >= 0:
             completion_value = [{"name": f"{completion}%"}]
@@ -364,17 +366,19 @@ def update_item_to_notion_database(page_id, game, achievements_info, review_text
     else:  # 默认使用数字类型
         properties[PROPERTY_MAPPING["COMPLETION"]] = {"type": "number", "number": completion}
     
-    # 调整游戏标签属性为复选框类型
-    if PROPERTY_TYPES[PROPERTY_MAPPING["TAGS"]] == "checkbox":
+    # 调整游戏标签属性为多选类型
+    if PROPERTY_TYPES.get(PROPERTY_MAPPING["TAGS"], "") == "checkbox":
         has_tags = len(steam_store_data.get('tag', [])) > 0
         properties[PROPERTY_MAPPING["TAGS"]] = {
             "type": "checkbox",
             "checkbox": has_tags
         }
     else:  # 默认使用多选类型
+        # 确保标签格式正确 - 每个标签应该是 {"name": "标签名称"} 格式
+        tags = [{"name": tag} for tag in steam_store_data.get('tag', [])]
         properties[PROPERTY_MAPPING["TAGS"]] = {
             "type": "multi_select",
-            "multi_select": steam_store_data.get('tag', [])
+            "multi_select": tags
         }
 
     data = {
@@ -392,8 +396,6 @@ def update_item_to_notion_database(page_id, game, achievements_info, review_text
     except Exception as e:
         logger.error(f"更新失败: {e}")
         return {}
-
-# 其他函数保持不变...
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
