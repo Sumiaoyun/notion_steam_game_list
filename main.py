@@ -148,6 +148,49 @@ def query_achievements_info_from_steam(game):
         logger.error(f"解析JSON响应失败: {game['name']}: {str(e)}")
     return None
 
+def get_achievements_count(game):
+    game_achievements = query_achievements_info_from_steam(game)
+    achievements_info = {}
+    achievements_info["total"] = 0
+    achievements_info["achieved"] = 0
+
+    if game_achievements is None or game_achievements.get("playerstats", {}).get("success", False) is False:
+        achievements_info["total"] = -1
+        achievements_info["achieved"] = -1
+        logger.info(f"游戏无成就信息: {game['name']}")
+
+    elif "achievements" not in game_achievements["playerstats"]:
+        achievements_info["total"] = -1
+        achievements_info["achieved"] = -1
+        logger.info(f"游戏无成就: {game['name']}")
+
+    else:
+        achievements_array = game_achievements["playerstats"]["achievements"]
+        for achievement_dict in achievements_array:
+            achievements_info["total"] = achievements_info["total"] + 1
+            if achievement_dict["achieved"]:
+                achievements_info["achieved"] = achievements_info["achieved"] + 1
+
+        logger.info(f"{game['name']} 成就统计完成!")
+
+    return achievements_info
+
+def is_record(game, achievements_info):
+    not_record_time = "2020-01-01 00:00:00"
+    time_tuple = time.strptime(not_record_time, "%Y-%m-%d %H:%M:%S")
+    timestamp = time.mktime(time_tuple)
+    playtime = round(float(game["playtime_forever"]) / 60, 1)
+
+    if (playtime < 0.1 and achievements_info["total"] < 1) or (
+        game.get("rtime_last_played", 0) < timestamp
+        and achievements_info["total"] < 1
+        and playtime < 6
+    ):
+        logger.info(f"{game['name']} 不符合过滤规则!")
+        return False
+
+    return True
+
 def add_item_to_notion_database(game, achievements_info, review_text, steam_store_data):
     url = "https://api.notion.com/v1/pages"
     headers = {
