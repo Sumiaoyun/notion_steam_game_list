@@ -398,10 +398,10 @@ def update_item_to_notion_database(page_id, game, achievements_info, review_text
                 else:
         # 如果标签是字符串，直接使用
                     tags.append({"name": str(tag)})
-        properties[PROPERTY_MAPPING["TAGS"]] = {
-            "type": "multi_select",
-            "multi_select": tags
-        }
+            properties[PROPERTY_MAPPING["TAGS"]] = {
+                "type": "multi_select",
+                "multi_select": tags
+            }
 
     data = {
         "properties": properties,
